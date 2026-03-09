@@ -1,0 +1,625 @@
+# Self-Hosted App Deployment Manager
+
+## Backend Implementation Specification (Node.js)
+
+---
+
+# 1. Project Overview
+
+This backend is the **control system for a self-hosted application platform**.
+It automatically deploys, updates, and manages applications using:
+
+* Git repositories
+* Docker containers
+* nginx reverse proxy
+* TLS certificates
+* Docker volume backups
+
+Applications are defined **inside their own repository** using a configuration file.
+The manager reads this configuration and deploys the application automatically.
+
+The backend acts as an **orchestrator for infrastructure**.
+
+---
+
+# 2. System Architecture
+
+```
+React Admin UI
+      │
+      │ REST API
+      ▼
+Node Control Server
+      │
+ ┌────┼──────────┬───────────┬─────────────┐
+ ▼    ▼          ▼           ▼             ▼
+Git  Docker    nginx     Certificate    Backup
+```
+
+Responsibilities:
+
+| Component    | Responsibility               |
+| ------------ | ---------------------------- |
+| Admin UI     | user interface               |
+| Node backend | orchestration & automation   |
+| Git          | application source           |
+| Docker       | runtime execution            |
+| nginx        | reverse proxy & public entry |
+| TLS          | HTTPS certificates           |
+| Backup       | volume protection            |
+
+---
+
+# 3. Backend Technology Stack
+
+Runtime
+
+* Node.js
+* TypeScript
+
+Recommended libraries
+
+| Purpose           | Library            |
+| ----------------- | ------------------ |
+| HTTP API          | Fastify or Express |
+| Git operations    | simple-git         |
+| Docker API        | dockerode          |
+| Process execution | execa              |
+| File system       | fs/promises        |
+| Schema validation | zod                |
+| Configuration     | dotenv             |
+
+Database
+
+Recommended options:
+
+* SQLite (simple)
+* PostgreSQL (if scaling)
+
+---
+
+# 4. Backend Directory Structure
+
+```
+backend/
+
+src/
+ ├ api/
+ │   ├ routes
+ │   ├ controllers
+ │   └ middleware
+ │
+ ├ services/
+ │   ├ git
+ │   ├ docker
+ │   ├ nginx
+ │   ├ deploy
+ │   ├ backup
+ │   └ certificate
+ │
+ ├ models/
+ │   ├ service.ts
+ │   ├ deployHistory.ts
+ │   └ backupHistory.ts
+ │
+ ├ repositories/
+ │
+ ├ utils/
+ │
+ ├ config/
+ │
+ └ app.ts
+
+storage/
+ ├ repos/
+ ├ backups/
+ └ logs/
+```
+
+---
+
+# 5. Core Data Model
+
+## Service
+
+Represents a deployed application.
+
+```
+Service {
+  id
+  name
+  domain
+  repositoryUrl
+  branch
+  deployMode
+  selectedCommit
+  containerName
+  containerPort
+  volumeName
+  autoBackup
+  enabled
+}
+```
+
+deployMode
+
+```
+branch
+commit
+```
+
+---
+
+## DeployHistory
+
+```
+DeployHistory {
+  id
+  serviceId
+  commitHash
+  timestamp
+  result
+  logs
+}
+```
+
+---
+
+## BackupHistory
+
+```
+BackupHistory {
+  id
+  serviceId
+  file
+  createdAt
+  size
+}
+```
+
+---
+
+# 6. Application Repository Specification
+
+Every managed application repository **must contain a configuration file**.
+
+Required file:
+
+```
+app-service.json
+```
+
+Example:
+
+```
+{
+  "name": "blog",
+  "domain": "blog.example.com",
+  "containerPort": 3000,
+  "volume": "blog_data",
+  "autoBackup": true
+}
+```
+
+Required fields
+
+| Field         | Description          |
+| ------------- | -------------------- |
+| name          | service name         |
+| domain        | public domain        |
+| containerPort | internal docker port |
+| volume        | docker volume        |
+| autoBackup    | enable deploy backup |
+
+Required files in repository
+
+```
+Dockerfile
+app-service.json
+```
+
+---
+
+# 7. Service Lifecycle
+
+## Service Registration
+
+User provides:
+
+```
+repository URL
+```
+
+Process
+
+```
+1 clone repository
+2 read app-service.json
+3 validate configuration
+4 register service
+5 create docker container
+6 generate nginx config
+7 issue TLS certificate
+8 enable service
+```
+
+---
+
+## Deploy Flow
+
+```
+deploy request
+     │
+     ▼
+optional volume backup
+     │
+     ▼
+git fetch
+     │
+     ▼
+checkout branch or commit
+     │
+     ▼
+docker build
+     │
+     ▼
+container restart
+     │
+     ▼
+health check
+     │
+     ▼
+log deploy result
+```
+
+---
+
+# 8. Git Service
+
+Responsibilities
+
+* clone repository
+* fetch updates
+* checkout branch
+* checkout commit
+* retrieve commit history
+
+Operations
+
+```
+clone repo
+fetch updates
+git log
+checkout commit
+```
+
+Commit history fields
+
+```
+hash
+shortHash
+author
+date
+message
+```
+
+---
+
+# 9. Docker Service
+
+Responsibilities
+
+* build images
+* run containers
+* stop containers
+* restart containers
+* manage volumes
+
+Container naming rule
+
+```
+svc-<serviceId>
+```
+
+Example
+
+```
+svc-blog
+```
+
+Docker network
+
+```
+app-network
+```
+
+nginx container must also join this network.
+
+---
+
+# 10. nginx Service
+
+Responsibilities
+
+* generate reverse proxy configuration
+* enable / disable service
+* reload nginx safely
+
+Configuration structure
+
+```
+/etc/nginx
+
+system/
+managed/
+
+sites-enabled/
+```
+
+The manager **must only modify the managed directory**.
+
+---
+
+## nginx template
+
+```
+server {
+    listen 443 ssl;
+    server_name {{domain}};
+
+    ssl_certificate /etc/letsencrypt/live/{{domain}}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{{domain}}/privkey.pem;
+
+    location / {
+        proxy_pass http://{{containerName}}:{{port}};
+    }
+}
+```
+
+---
+
+# 11. Certificate Service
+
+Certificates are issued automatically.
+
+Flow
+
+```
+domain detected
+     │
+     ▼
+issue TLS certificate
+     │
+     ▼
+reload nginx
+```
+
+Certificates stored in
+
+```
+/etc/letsencrypt/
+```
+
+---
+
+# 12. Backup Service
+
+All containers use **Docker volumes for persistence**.
+
+Backup method
+
+```
+docker volume
+   ↓
+temporary container
+   ↓
+tar archive
+   ↓
+gzip compression
+```
+
+Backup format
+
+```
+tar.gz
+```
+
+Backup location
+
+```
+storage/backups/<service>
+```
+
+---
+
+## Backup Features
+
+| Feature         | Description    |
+| --------------- | -------------- |
+| Auto Backup     | before deploy  |
+| Manual Backup   | user triggered |
+| Restore Backup  | recover data   |
+| Download Backup | gzip download  |
+
+---
+
+# 13. Enable / Disable Service
+
+Service visibility controlled by nginx symlink.
+
+Enable
+
+```
+sites-enabled -> create symlink
+```
+
+Disable
+
+```
+remove symlink
+```
+
+Procedure
+
+```
+modify symlink
+test nginx config
+reload nginx
+```
+
+---
+
+# 14. Security Model
+
+Admin system must be restricted.
+
+Requirements
+
+```
+LAN access only
+authentication required
+backup downloads restricted
+```
+
+Manager service is **not a managed application**.
+
+It is a **system-level service**.
+
+---
+
+# 15. API Endpoints
+
+## Services
+
+```
+GET    /services
+POST   /services
+DELETE /services/:id
+PATCH  /services/:id
+```
+
+## Deployment
+
+```
+POST /services/:id/deploy/latest
+POST /services/:id/deploy/commit
+```
+
+## Git
+
+```
+GET /services/:id/commits
+```
+
+## Enable / Disable
+
+```
+POST /services/:id/enable
+POST /services/:id/disable
+```
+
+## Backup
+
+```
+GET  /services/:id/backups
+POST /services/:id/backup
+POST /services/:id/restore
+GET  /services/:id/backups/:file
+```
+
+---
+
+# 16. Logging
+
+Logs must be stored for debugging.
+
+Types
+
+```
+deploy logs
+backup logs
+system logs
+nginx operations
+docker operations
+```
+
+Log location
+
+```
+storage/logs
+```
+
+---
+
+# 17. Error Handling
+
+Critical operations must include rollback.
+
+Examples
+
+```
+nginx config invalid
+→ revert change
+
+deploy failed
+→ restart previous container
+```
+
+---
+
+# 18. Required Safety Checks
+
+Before enabling service
+
+```
+domain not already registered
+nginx config valid
+container healthy
+```
+
+Before deploy
+
+```
+repository exists
+config valid
+Dockerfile exists
+```
+
+---
+
+# 19. Recommended Future Features
+
+Possible future extensions
+
+```
+service scaling
+resource limits
+deployment queue
+multi-node support
+service templates
+```
+
+---
+
+# 20. Development Order
+
+Recommended implementation order
+
+```
+1 project setup
+2 service model
+3 git service
+4 docker service
+5 nginx integration
+6 deploy pipeline
+7 certificate automation
+8 backup system
+9 api routes
+10 logging
+```
+
+---
+
+# Summary
+
+This backend acts as a **self-hosted PaaS controller** that reads application configuration from Git repositories and automatically handles deployment, Docker execution, nginx routing, TLS certificates, and data backups.
