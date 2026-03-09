@@ -73,7 +73,6 @@ export class ServiceController {
       await dockerService.createAndStartContainer({
         serviceId: id,
         imageName: `svc-${id}`,
-        port: service.containerPort,
         volume: service.volumeName,
       });
 
@@ -113,6 +112,9 @@ export class ServiceController {
 
       // Stop and remove docker container
       await dockerService.stopAndRemoveContainer(service.containerName);
+
+      // Remove docker image (the image name is the same as the container name)
+      await dockerService.removeImage(service.containerName);
 
       // Remove repository
       const repoDir = path.join(env.REPOS_PATH, id);

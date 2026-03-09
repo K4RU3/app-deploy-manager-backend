@@ -61,7 +61,6 @@ export class DeployService {
       await dockerService.createAndStartContainer({
         serviceId: service.id,
         imageName: imageName,
-        port: service.containerPort,
         volume: service.volumeName,
       });
 

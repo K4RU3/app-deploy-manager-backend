@@ -15,7 +15,6 @@ export class DockerService {
   async createAndStartContainer(options: {
     serviceId: string;
     imageName: string;
-    port: number;
     volume: string;
   }) {
     const containerName = `svc-${options.serviceId}`;
@@ -33,9 +32,6 @@ export class DockerService {
     const container = await docker.createContainer({
       Image: options.imageName,
       name: containerName,
-      ExposedPorts: {
-        [`${options.port}/tcp`]: {},
-      },
       HostConfig: {
         Binds: [`${options.volume}:/data`],
         NetworkMode: networkName,
@@ -54,6 +50,17 @@ export class DockerService {
         await container.stop();
       }
       await container.remove();
+    } catch (err: any) {
+      if (err.statusCode !== 404) {
+        throw err;
+      }
+    }
+  }
+
+  async removeImage(imageName: string) {
+    try {
+      const image = docker.getImage(imageName);
+      await image.remove({ force: true });
     } catch (err: any) {
       if (err.statusCode !== 404) {
         throw err;
