@@ -1,10 +1,10 @@
-import { execa } from 'execa';
-import fs from 'fs/promises';
-import path from 'path';
+import { execa } from "execa";
+import fs from "fs/promises";
+import path from "path";
 
-const NGINX_ROOT = '/etc/nginx';
-const MANAGED_DIR = path.join(NGINX_ROOT, 'managed');
-const SITES_ENABLED_DIR = path.join(NGINX_ROOT, 'sites-enabled');
+const NGINX_ROOT = "/etc/nginx";
+const MANAGED_DIR = path.join(NGINX_ROOT, "managed");
+const SITES_ENABLED_DIR = path.join(NGINX_ROOT, "sites-enabled");
 
 export class NginxService {
   async generateConfig(domain: string, containerName: string, port: number) {
@@ -52,16 +52,20 @@ server {
     try {
       await fs.unlink(dest);
     } catch (err: any) {
-      if (err.code !== 'ENOENT') throw err;
+      if (err.code !== "ENOENT") throw err;
     }
 
     await this.testAndReload();
   }
 
   async testAndReload() {
-    await execa('nginx', ['-t']);
-    await execa('nginx', ['-s', 'reload']);
+    // await execa("nginx", ["-t"]);
+    // await execa("nginx", ["-s", "reload"]);
+    await execa("sudo", ["nginx", "-t"]);
+    await execa("sudo", ["nginx", "-s", "reload"]);
   }
 }
 
 export const nginxService = new NginxService();
+await execa("nginx", ["-t"]);
+await execa("nginx", ["-s", "reload"]);
