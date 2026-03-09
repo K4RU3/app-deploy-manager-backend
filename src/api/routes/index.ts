@@ -3,6 +3,7 @@ import { serviceController } from '../controllers/service.controller.js';
 import { deployController } from '../controllers/deploy.controller.js';
 import { gitController } from '../controllers/git.controller.js';
 import { backupController } from '../controllers/backup.controller.js';
+import { systemController } from '../controllers/system.controller.js';
 
 export default async function (fastify: FastifyInstance) {
   // Services
@@ -26,4 +27,8 @@ export default async function (fastify: FastifyInstance) {
   fastify.post('/services/:id/backup', backupController.createBackup);
   fastify.post('/services/:id/restore', backupController.restoreBackup);
   fastify.get('/services/:id/backups/:file', backupController.downloadBackup);
+
+  // System
+  fastify.get('/system/stats', systemController.getStats);
+  fastify.get('/system/events', systemController.getEvents);
 }

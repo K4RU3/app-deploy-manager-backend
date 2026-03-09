@@ -623,3 +623,123 @@ Recommended implementation order
 # Summary
 
 This backend acts as a **self-hosted PaaS controller** that reads application configuration from Git repositories and automatically handles deployment, Docker execution, nginx routing, TLS certificates, and data backups.
+
+
+## System Monitoring API Additions
+
+### 1. `GET /system/stats`
+
+**Description**
+Retrieves the current system resource usage statistics. This endpoint provides real-time information about CPU, memory, and disk utilization expressed as percentages.
+
+**Response Fields**
+
+* `cpu` – CPU usage percentage
+* `memory` – Memory usage percentage
+* `disk` – Disk usage percentage
+
+**Response Example**
+
+```json
+{
+  "cpu": 42.5,
+  "memory": 68.1,
+  "disk": 55.3
+}
+```
+
+**Data Model**
+
+`SystemStats`
+
+```ts
+type SystemStats = {
+  cpu: number
+  memory: number
+  disk: number
+}
+```
+
+---
+
+### 2. `GET /system/events`
+
+**Description**
+Retrieves a list of recent system-wide activity events. These events represent actions performed within the system environment.
+
+**Example Event Types**
+
+* Deployment executions
+* Backup operations
+* System status changes
+* Other system-level actions
+
+**Response Example**
+
+```json
+[
+  {
+    "id": "evt_001",
+    "type": "deployment",
+    "message": "New version deployed",
+    "timestamp": "2026-03-09T10:15:00Z"
+  },
+  {
+    "id": "evt_002",
+    "type": "backup",
+    "message": "Scheduled backup completed",
+    "timestamp": "2026-03-09T09:00:00Z"
+  }
+]
+```
+
+**Data Model**
+
+`SystemEvent`
+
+```ts
+type SystemEvent = {
+  id: string
+  type: string
+  message: string
+  timestamp: string
+}
+```
+
+---
+
+## Implementation Details
+
+**Type Definitions**
+
+* `src/types/system.ts`
+
+  * `SystemStats`
+  * `SystemEvent`
+
+**API Layer**
+
+* `src/api/system.ts`
+
+  * `getSystemStats()`
+  * `getSystemEvents()`
+
+**React Hooks**
+
+* `useSystemStats`
+  Fetches data from `/system/stats` and provides real-time system resource usage.
+
+* `useSystemEvents`
+  Fetches data from `/system/events` and provides recent system activity.
+
+**Dashboard Integration**
+
+`Dashboard.tsx` has been updated to use the new hooks and display:
+
+* Real-time system resource usage
+* Recent system events
+
+---
+
+**Summary**
+Two new endpoints (`/system/stats` and `/system/events`) have been introduced to support real-time system monitoring and activity tracking. Corresponding data models, API functions, and React hooks have been implemented, and the dashboard has been updated to consume these new data sources.
