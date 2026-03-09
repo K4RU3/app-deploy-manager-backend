@@ -67,5 +67,3 @@ server {
 }
 
 export const nginxService = new NginxService();
-await execa("nginx", ["-t"]);
-await execa("nginx", ["-s", "reload"]);
