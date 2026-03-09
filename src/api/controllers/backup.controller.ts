@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import path from 'path';
 import fs from 'fs';
 import { randomUUID } from 'node:crypto';
@@ -6,7 +6,7 @@ import db from '../../config/db.js';
 import { env } from '../../config/env.js';
 import { backupService } from '../../services/backup.service.js';
 import { BackupHistorySchema } from '../../models/backupHistory.js';
-import { Service } from '../../models/service.js';
+import type { Service } from '../../models/service.js';
 
 export class BackupController {
   async getBackups(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {

@@ -1,4 +1,4 @@
-import { FastifyInstance } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { serviceController } from '../controllers/service.controller.js';
 import { deployController } from '../controllers/deploy.controller.js';
 import { gitController } from '../controllers/git.controller.js';

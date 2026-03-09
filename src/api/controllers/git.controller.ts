@@ -1,9 +1,9 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import path from 'path';
 import db from '../../config/db.js';
 import { env } from '../../config/env.js';
 import { gitService } from '../../services/git.service.js';
-import { Service } from '../../models/service.js';
+import type { Service } from '../../models/service.js';
 
 export class GitController {
   async getCommits(request: FastifyRequest<{ Params: { id: string }; Querystring: { limit?: string } }>, reply: FastifyReply) {

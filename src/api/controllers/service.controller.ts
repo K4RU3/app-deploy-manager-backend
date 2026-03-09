@@ -1,4 +1,4 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import path from 'path';
 import fs from 'fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -8,7 +8,7 @@ import { gitService } from '../../services/git.service.js';
 import { dockerService } from '../../services/docker.service.js';
 import { nginxService } from '../../services/nginx.service.js';
 import { certificateService } from '../../services/certificate.service.js';
-import { ServiceSchema, Service } from '../../models/service.js';
+import { ServiceSchema, type Service } from '../../models/service.js';
 
 export class ServiceController {
   async getAllServices(request: FastifyRequest, reply: FastifyReply) {

@@ -1,8 +1,8 @@
-import { FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import db from '../../config/db.js';
 import { deployService } from '../../services/deploy.service.js';
 import { DeployHistorySchema } from '../../models/deployHistory.js';
-import { Service } from '../../models/service.js';
+import type { Service } from '../../models/service.js';
 
 export class DeployController {
   async deployLatest(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {

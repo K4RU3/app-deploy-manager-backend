@@ -6,7 +6,7 @@ import { dockerService } from './docker.service.js';
 import { backupService } from './backup.service.js';
 import { env } from '../config/env.js';
 import db from '../config/db.js';
-import { Service } from '../models/service.js';
+import type { Service } from '../models/service.js';
 
 export class DeployService {
   async deploy(serviceId: string, options: { mode: 'branch' | 'commit'; value: string }) {
