@@ -44,4 +44,17 @@ db.exec(`
   );
 `);
 
+// Migration: Add 'port' column if it doesn't exist
+const tableInfo = db.prepare('PRAGMA table_info(services)').all() as any[];
+const hasPort = tableInfo.some((col) => col.name === 'port');
+
+if (!hasPort) {
+  const hasContainerPort = tableInfo.some((col) => col.name === 'containerPort');
+  if (hasContainerPort) {
+    db.exec('ALTER TABLE services RENAME COLUMN containerPort TO port');
+  } else {
+    db.exec('ALTER TABLE services ADD COLUMN port TEXT');
+  }
+}
+
 export default db;
