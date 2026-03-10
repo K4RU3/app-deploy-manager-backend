@@ -31,7 +31,7 @@ export class DockerService {
     const namingLine = buildLines.reverse().find((line) => line.includes("naming to"));
 
     if (namingLine) {
-      const match = namingLine.match(/naming to\s+(.+)$/);
+      const match = namingLine.match(/naming to\s+([^\s]+)/);
       if (match && match[1]) {
         const builtImageName = match[1].trim();
         if (builtImageName !== imageName) {
