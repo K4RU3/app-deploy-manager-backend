@@ -134,7 +134,11 @@ Service {
   deployMode
   selectedCommit
   containerName
-  containerPort
+  port {
+    host
+    container
+    protocol
+  }
   volumeName
   autoBackup
   enabled
@@ -195,7 +199,11 @@ Example:
 {
   "name": "blog",
   "domain": "blog.example.com",
-  "containerPort": 3000,
+  "port": {
+    "host": 8080,
+    "container": 3000,
+    "protocol": "tcp"
+  },
   "volume": "blog_data",
   "autoBackup": true
 }
@@ -203,13 +211,13 @@ Example:
 
 Required fields
 
-| Field         | Description          |
-| ------------- | -------------------- |
-| name          | service name         |
-| domain        | public domain        |
-| containerPort | internal docker port |
-| volume        | docker volume        |
-| autoBackup    | enable deploy backup |
+| Field      | Description          |
+| ---------- | -------------------- |
+| name       | service name         |
+| domain     | public domain        |
+| port       | port mapping config  |
+| volume     | docker volume        |
+| autoBackup | enable deploy backup |
 
 Required files in repository
 

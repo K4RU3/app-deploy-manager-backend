@@ -3,15 +3,16 @@ import path from 'path';
 import db from '../../config/db.js';
 import { env } from '../../config/env.js';
 import { gitService } from '../../services/git.service.js';
-import type { Service } from '../../models/service.js';
+import { ServiceSchema, type Service } from '../../models/service.js';
 
 export class GitController {
   async getCommits(request: FastifyRequest<{ Params: { id: string }; Querystring: { limit?: string } }>, reply: FastifyReply) {
     const { id } = request.params;
     const limit = parseInt(request.query.limit || '20', 10);
 
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-    if (!service) return reply.code(404).send({ error: 'Service not found' });
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) return reply.code(404).send({ error: 'Service not found' });
+    const service = ServiceSchema.parse(rawService);
 
     const repoDir = path.join(env.REPOS_PATH, id);
     

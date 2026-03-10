@@ -6,14 +6,15 @@ import { dockerService } from './docker.service.js';
 import { backupService } from './backup.service.js';
 import { env } from '../config/env.js';
 import db from '../config/db.js';
-import type { Service } from '../models/service.js';
+import { ServiceSchema, type Service } from '../models/service.js';
 
 export class DeployService {
   async deploy(serviceId: string, options: { mode: 'branch' | 'commit'; value: string }) {
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(serviceId) as Service;
-    if (!service) {
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(serviceId);
+    if (!rawService) {
       throw new Error(`Service ${serviceId} not found`);
     }
+    const service = ServiceSchema.parse(rawService);
 
     const repoDir = path.join(env.REPOS_PATH, service.id);
     const logLines: string[] = [];
@@ -62,6 +63,7 @@ export class DeployService {
         serviceId: service.id,
         imageName: imageName,
         volume: service.volumeName,
+        port: service.port || undefined,
       });
 
       // 6. Health check

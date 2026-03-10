@@ -18,7 +18,7 @@ db.exec(`
     deployMode TEXT NOT NULL,
     selectedCommit TEXT,
     containerName TEXT NOT NULL,
-    containerPort INTEGER NOT NULL,
+    port TEXT, -- Store as JSON string
     volumeName TEXT NOT NULL,
     autoBackup INTEGER NOT NULL DEFAULT 1, -- Store as 0 or 1
     enabled INTEGER NOT NULL DEFAULT 1     -- Store as 0 or 1

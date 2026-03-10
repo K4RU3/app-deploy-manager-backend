@@ -16,6 +16,7 @@ export class DockerService {
     serviceId: string;
     imageName: string;
     volume: string;
+    port?: { host: number; container: number; protocol?: string } | null | undefined;
   }) {
     const containerName = `svc-${options.serviceId}`;
     const networkName = 'app-network';
@@ -29,11 +30,22 @@ export class DockerService {
     // Stop and remove existing container if any
     await this.stopAndRemoveContainer(containerName);
 
+    const exposedPorts: { [key: string]: {} } = {};
+    const portBindings: { [key: string]: { HostPort: string }[] } = {};
+
+    if (options.port) {
+      const portKey = `${options.port.container}/${options.port.protocol || 'tcp'}`;
+      exposedPorts[portKey] = {};
+      portBindings[portKey] = [{ HostPort: options.port.host.toString() }];
+    }
+
     const container = await docker.createContainer({
       Image: options.imageName,
       name: containerName,
+      ExposedPorts: exposedPorts,
       HostConfig: {
         Binds: [`${options.volume}:/data`],
+        PortBindings: portBindings,
         NetworkMode: networkName,
         RestartPolicy: { Name: 'always' },
       },

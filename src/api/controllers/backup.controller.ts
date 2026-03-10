@@ -6,7 +6,7 @@ import db from '../../config/db.js';
 import { env } from '../../config/env.js';
 import { backupService } from '../../services/backup.service.js';
 import { BackupHistorySchema } from '../../models/backupHistory.js';
-import type { Service } from '../../models/service.js';
+import { ServiceSchema, type Service } from '../../models/service.js';
 
 export class BackupController {
   async getBackups(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
@@ -17,8 +17,9 @@ export class BackupController {
 
   async createBackup(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const { id } = request.params;
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-    if (!service) return reply.code(404).send({ error: 'Service not found' });
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) return reply.code(404).send({ error: 'Service not found' });
+    const service = ServiceSchema.parse(rawService);
 
     try {
       const backup = await backupService.createBackup(id, service.volumeName);
@@ -45,8 +46,9 @@ export class BackupController {
     const { file } = request.body;
     if (!file) return reply.code(400).send({ error: 'file is required' });
 
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-    if (!service) return reply.code(404).send({ error: 'Service not found' });
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) return reply.code(404).send({ error: 'Service not found' });
+    const service = ServiceSchema.parse(rawService);
 
     try {
       await backupService.restoreBackup(id, service.volumeName, file);

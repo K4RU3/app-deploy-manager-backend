@@ -31,11 +31,11 @@ export class ServiceController {
       const config = JSON.parse(configContent);
 
       // 3. validate configuration (basic validation for now)
-      if (!config.name || !config.domain || !config.containerPort) {
+      if (!config.name || !config.domain) {
         throw new Error('Invalid app-service.json: missing required fields');
       }
 
-      const service: Service = {
+      const service = ServiceSchema.parse({
         id,
         name: config.name,
         domain: config.domain,
@@ -44,15 +44,15 @@ export class ServiceController {
         deployMode: 'branch',
         selectedCommit: null,
         containerName: `svc-${id}`,
-        containerPort: config.containerPort,
+        port: config.port,
         volumeName: config.volume || `${config.name}_data`,
         autoBackup: config.autoBackup ?? true,
         enabled: true,
-      };
+      });
 
       // 4. register service
       db.prepare(`
-        INSERT INTO services (id, name, domain, repositoryUrl, branch, deployMode, containerName, containerPort, volumeName, autoBackup, enabled)
+        INSERT INTO services (id, name, domain, repositoryUrl, branch, deployMode, containerName, port, volumeName, autoBackup, enabled)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         service.id,
@@ -62,7 +62,7 @@ export class ServiceController {
         service.branch,
         service.deployMode,
         service.containerName,
-        service.containerPort,
+        service.port ? JSON.stringify(service.port) : null,
         service.volumeName,
         service.autoBackup ? 1 : 0,
         service.enabled ? 1 : 0
@@ -74,10 +74,13 @@ export class ServiceController {
         serviceId: id,
         imageName: `svc-${id}`,
         volume: service.volumeName,
+        port: service.port || undefined,
       });
 
       // 6. generate nginx config
-      await nginxService.generateConfig(service.domain, service.containerName, service.containerPort);
+      if (service.port) {
+        await nginxService.generateConfig(service.domain, service.containerName, service.port.container);
+      }
 
       // 7. issue TLS certificate
       try {
@@ -100,11 +103,11 @@ export class ServiceController {
 
   async deleteService(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const { id } = request.params;
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-
-    if (!service) {
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) {
       return reply.code(404).send({ error: 'Service not found' });
     }
+    const service = ServiceSchema.parse(rawService);
 
     try {
       // Disable in nginx
@@ -133,13 +136,14 @@ export class ServiceController {
     const { id } = request.params;
     const updates = request.body;
 
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-    if (!service) {
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) {
       return reply.code(404).send({ error: 'Service not found' });
     }
+    const service = ServiceSchema.parse(rawService);
 
     // Filter out fields that shouldn't be updated directly via patch or need special handling
-    const allowedUpdates = ['name', 'branch', 'deployMode', 'autoBackup'];
+    const allowedUpdates = ['name', 'branch', 'deployMode', 'autoBackup', 'port'];
     const filteredUpdates = Object.fromEntries(
       Object.entries(updates).filter(([key]) => allowedUpdates.includes(key))
     );
@@ -151,7 +155,11 @@ export class ServiceController {
     const setClause = Object.keys(filteredUpdates)
       .map((key) => `${key} = ?`)
       .join(', ');
-    const values = Object.values(filteredUpdates).map((v) => (typeof v === 'boolean' ? (v ? 1 : 0) : v));
+    const values = Object.values(filteredUpdates).map((v) => {
+      if (typeof v === 'boolean') return v ? 1 : 0;
+      if (typeof v === 'object' && v !== null) return JSON.stringify(v);
+      return v;
+    });
 
     db.prepare(`UPDATE services SET ${setClause} WHERE id = ?`).run(...values, id);
 
@@ -161,8 +169,9 @@ export class ServiceController {
 
   async enableService(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const { id } = request.params;
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-    if (!service) return reply.code(404).send({ error: 'Service not found' });
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) return reply.code(404).send({ error: 'Service not found' });
+    const service = ServiceSchema.parse(rawService);
 
     await nginxService.enableService(service.domain);
     db.prepare('UPDATE services SET enabled = 1 WHERE id = ?').run(id);
@@ -172,8 +181,9 @@ export class ServiceController {
 
   async disableService(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const { id } = request.params;
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-    if (!service) return reply.code(404).send({ error: 'Service not found' });
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) return reply.code(404).send({ error: 'Service not found' });
+    const service = ServiceSchema.parse(rawService);
 
     await nginxService.disableService(service.domain);
     db.prepare('UPDATE services SET enabled = 0 WHERE id = ?').run(id);

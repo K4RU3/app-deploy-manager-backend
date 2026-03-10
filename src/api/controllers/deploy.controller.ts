@@ -2,13 +2,14 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 import db from '../../config/db.js';
 import { deployService } from '../../services/deploy.service.js';
 import { DeployHistorySchema } from '../../models/deployHistory.js';
-import type { Service } from '../../models/service.js';
+import { ServiceSchema, type Service } from '../../models/service.js';
 
 export class DeployController {
   async deployLatest(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const { id } = request.params;
-    const service = db.prepare('SELECT * FROM services WHERE id = ?').get(id) as Service;
-    if (!service) return reply.code(404).send({ error: 'Service not found' });
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) return reply.code(404).send({ error: 'Service not found' });
+    const service = ServiceSchema.parse(rawService);
 
     // Deploy latest on the current branch
     const result = await deployService.deploy(id, {
