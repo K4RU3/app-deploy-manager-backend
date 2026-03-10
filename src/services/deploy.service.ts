@@ -54,11 +54,11 @@ export class DeployService {
 
       // 4. Docker build
       log('Building docker image...');
-      const imageName = `svc-${service.id}`;
-      await dockerService.buildImage(repoDir, imageName);
+      await dockerService.buildImage(service.id);
 
       // 5. Container restart
       log('Restarting container...');
+      const imageName = `svc-${service.id}`;
       await dockerService.createAndStartContainer({
         serviceId: service.id,
         imageName: imageName,

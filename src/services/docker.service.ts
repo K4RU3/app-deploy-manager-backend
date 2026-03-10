@@ -2,11 +2,14 @@ import Docker from "dockerode";
 import { execa } from "execa";
 import fs from "fs/promises";
 import path from "path";
+import { env } from "../config/env.js";
 
 const docker = new Docker();
 
 export class DockerService {
-  async buildImage(repoDir: string, imageName: string) {
+  async buildImage(serviceId: string) {
+    const repoDir = path.join(env.REPOS_PATH, serviceId);
+    const imageName = `svc-${serviceId}`;
     const composeFiles = ["docker-compose.yml", "docker-compose.yaml"];
     let composeFileFound = "";
 
@@ -22,16 +25,14 @@ export class DockerService {
 
     if (composeFileFound) {
       // If compose exists, use it to build.
-      // We assume the service name in compose might match or it just builds everything.
-      // To ensure the built image is tagged as imageName, we can set COMPOSE_PROJECT_NAME or similar,
-      // but usually docker build -t is more direct for single-container services.
-      // The user specifically asked to use compose if it exists.
       await execa("docker", ["compose", "build"], { cwd: repoDir });
       
-      // Note: If we use docker compose build, we might need to make sure the result 
-      // can be started by dockerode using options.imageName in createAndStartContainer.
-      // For now, let's assume the compose file is configured to tag the image correctly 
-      // or that buildImage's role is just to ensure it's built.
+      // Tag the built image as imageName (svc-{id}) so that it can be started by its expected name
+      const { stdout: imageIds } = await execa("docker", ["compose", "images", "-q"], { cwd: repoDir });
+      const firstId = imageIds.trim().split(/\s+/)[0];
+      if (firstId) {
+        await execa("docker", ["tag", firstId, imageName]);
+      }
     } else {
       await execa("docker", ["build", "-t", imageName, "."], { cwd: repoDir });
     }
