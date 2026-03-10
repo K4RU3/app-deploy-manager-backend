@@ -7,7 +7,7 @@ const MANAGED_DIR = path.join(NGINX_ROOT, "managed");
 const SITES_ENABLED_DIR = path.join(NGINX_ROOT, "sites-enabled");
 
 export class NginxService {
-  async generateConfig(domain: string, containerName: string, port: number) {
+  async generateConfig(domain: string, hostPort: number) {
     const config = `
 server {
     listen 443 ssl;
@@ -17,7 +17,7 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/${domain}/privkey.pem;
 
     location / {
-        proxy_pass http://${containerName}:${port};
+        proxy_pass http://localhost:${hostPort};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

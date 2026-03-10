@@ -79,7 +79,7 @@ export class ServiceController {
 
       // 6. generate nginx config
       if (service.port) {
-        await nginxService.generateConfig(service.domain, service.containerName, service.port.container);
+        await nginxService.generateConfig(service.domain, service.port.host);
       }
 
       // 7. issue TLS certificate
