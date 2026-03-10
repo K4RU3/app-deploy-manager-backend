@@ -7,9 +7,7 @@ import { env } from "../config/env.js";
 const docker = new Docker();
 
 export class DockerService {
-  async buildImage(serviceId: string) {
-    const repoDir = path.join(env.REPOS_PATH, serviceId);
-    const imageName = `svc-${serviceId}`;
+  async buildImage(repoDir: string, imageName: string) {
     const composeFiles = ["docker-compose.yml", "docker-compose.yaml"];
     let composeFileFound = "";
 
@@ -23,18 +21,39 @@ export class DockerService {
       }
     }
 
-    if (composeFileFound) {
-      // If compose exists, use it to build.
-      await execa("docker", ["compose", "build"], { cwd: repoDir });
-      
-      // Tag the built image as imageName (svc-{id}) so that it can be started by its expected name
-      const { stdout: imageIds } = await execa("docker", ["compose", "images", "-q"], { cwd: repoDir });
-      const firstId = imageIds.trim().split(/\s+/)[0];
-      if (firstId) {
-        await execa("docker", ["tag", firstId, imageName]);
+    const buildProcess = composeFileFound
+      ? await execa("docker", ["compose", "build"], { cwd: repoDir, all: true })
+      : await execa("docker", ["build", "-t", imageName, "."], { cwd: repoDir, all: true });
+
+    // Try to find the image name from the build output (BuildKit format: => => naming to ...)
+    const output = buildProcess.all || "";
+    const buildLines = output.split("\n");
+    const namingLine = buildLines.reverse().find((line) => line.includes("naming to"));
+
+    if (namingLine) {
+      const match = namingLine.match(/naming to\s+(.+)$/);
+      if (match && match[1]) {
+        const builtImageName = match[1].trim();
+        if (builtImageName !== imageName) {
+          await execa("docker", ["tag", builtImageName, imageName]);
+        }
+        return; // Success
       }
-    } else {
-      await execa("docker", ["build", "-t", imageName, "."], { cwd: repoDir });
+    }
+
+    if (composeFileFound) {
+      // Fallback: Find the built image by searching for serviceId in the image list.
+      const serviceId = path.basename(repoDir);
+      const { stdout } = await execa("docker", ["images", "--format", "{{.Repository}} {{.ID}}"]);
+      const lines = stdout.trim().split("\n");
+      const targetLine = lines.find((line) => line.includes(serviceId));
+
+      if (targetLine) {
+        const imageId = targetLine.split(" ")[1];
+        if (imageId) {
+          await execa("docker", ["tag", imageId, imageName]);
+        }
+      }
     }
   }
 

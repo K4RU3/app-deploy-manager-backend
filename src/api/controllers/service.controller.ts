@@ -69,7 +69,7 @@ export class ServiceController {
       );
 
       // 5. create docker container (we'll build it first too)
-      await dockerService.buildImage(id);
+      await dockerService.buildImage(repoDir, `svc-${id}`);
       await dockerService.createAndStartContainer({
         serviceId: id,
         imageName: `svc-${id}`,
