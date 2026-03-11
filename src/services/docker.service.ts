@@ -1,60 +1,17 @@
 import Docker from "dockerode";
 import { execa } from "execa";
-import fs from "fs/promises";
-import path from "path";
-import { env } from "../config/env.js";
 
 const docker = new Docker();
 
 export class DockerService {
+  /**
+   * Builds a docker image from a Dockerfile in the repository directory.
+   * Ignores docker-compose files as per requirement.
+   */
   async buildImage(repoDir: string, imageName: string) {
-    const composeFiles = ["docker-compose.yml", "docker-compose.yaml"];
-    let composeFileFound = "";
-
-    for (const file of composeFiles) {
-      try {
-        await fs.access(path.join(repoDir, file));
-        composeFileFound = file;
-        break;
-      } catch {
-        continue;
-      }
-    }
-
-    const buildProcess = composeFileFound
-      ? await execa("docker", ["compose", "build"], { cwd: repoDir, all: true })
-      : await execa("docker", ["build", "-t", imageName, "."], { cwd: repoDir, all: true });
-
-    // Try to find the image name from the build output (BuildKit format: => => naming to ...)
-    const output = buildProcess.all || "";
-    const buildLines = output.split("\n");
-    const namingLine = buildLines.reverse().find((line) => line.includes("naming to"));
-
-    if (namingLine) {
-      const match = namingLine.match(/naming to\s+([^\s]+)/);
-      if (match && match[1]) {
-        const builtImageName = match[1].trim();
-        if (builtImageName !== imageName) {
-          await execa("docker", ["tag", builtImageName, imageName]);
-        }
-        return; // Success
-      }
-    }
-
-    if (composeFileFound) {
-      // Fallback: Find the built image by searching for serviceId in the image list.
-      const serviceId = path.basename(repoDir);
-      const { stdout } = await execa("docker", ["images", "--format", "{{.Repository}} {{.ID}}"]);
-      const lines = stdout.trim().split("\n");
-      const targetLine = lines.find((line) => line.includes(serviceId));
-
-      if (targetLine) {
-        const imageId = targetLine.split(" ")[1];
-        if (imageId) {
-          await execa("docker", ["tag", imageId, imageName]);
-        }
-      }
-    }
+    await execa("docker", ["build", "-t", imageName, "."], {
+      cwd: repoDir,
+    });
   }
 
   async createAndStartContainer(options: {
@@ -87,12 +44,17 @@ export class DockerService {
       portBindings[portKey] = [{ HostPort: options.port.host.toString() }];
     }
 
+    const binds: string[] = [];
+    if (options.volume) {
+      binds.push(`${options.volume}:/data`);
+    }
+
     const container = await docker.createContainer({
       Image: options.imageName,
       name: containerName,
       ExposedPorts: exposedPorts,
       HostConfig: {
-        Binds: [`${options.volume}:/data`],
+        Binds: binds,
         PortBindings: portBindings,
         NetworkMode: networkName,
         RestartPolicy: { Name: "always" },
