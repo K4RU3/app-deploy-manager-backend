@@ -8,6 +8,7 @@ import { systemController } from '../controllers/system.controller.js';
 export default async function (fastify: FastifyInstance) {
   // Services
   fastify.get('/services', serviceController.getAllServices);
+  fastify.get('/services/:id', serviceController.getServiceById);
   fastify.post('/services', serviceController.createService);
   fastify.delete('/services/:id', serviceController.deleteService);
   fastify.patch('/services/:id', serviceController.patchService);

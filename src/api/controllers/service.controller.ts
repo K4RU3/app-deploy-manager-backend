@@ -23,6 +23,17 @@ export class ServiceController {
     return reply.send(services);
   }
 
+  async getServiceById(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
+    const { id } = request.params;
+    const rawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    if (!rawService) {
+      return reply.code(404).send({ error: 'Service not found' });
+    }
+    const service = ServiceSchema.parse(rawService);
+    service.status = await dockerService.getContainerStatus(service.containerName);
+    return reply.send(service);
+  }
+
   async createService(request: FastifyRequest<{ Body: { repositoryUrl: string; branch?: string } }>, reply: FastifyReply) {
     const { repositoryUrl, branch = 'main' } = request.body;
     const id = randomUUID();
