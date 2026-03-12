@@ -19,7 +19,7 @@ export class GitController {
     try {
       // Refresh logs by fetching first
       await gitService.fetch(repoDir);
-      const commits = await gitService.getLogs(repoDir, limit);
+      const commits = await gitService.getLogs(repoDir, limit, `origin/${service.branch}`);
       return reply.send(commits);
     } catch (error: any) {
       return reply.code(500).send({ error: error.message });

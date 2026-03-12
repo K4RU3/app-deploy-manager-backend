@@ -24,12 +24,18 @@ export class GitService {
     await execa('git', ['checkout', ref], { cwd: repoDir });
   }
 
-  async getLogs(repoDir: string, limit: number = 20): Promise<GitLog[]> {
-    const { stdout } = await execa(
-      'git',
-      ['log', `-${limit}`, '--pretty=format:%H%x09%h%x09%an%x09%ad%x09%s', '--date=short'],
-      { cwd: repoDir }
-    );
+  async getLogs(repoDir: string, limit: number = 20, ref?: string): Promise<GitLog[]> {
+    const args = [
+      "log",
+      `-${limit}`,
+      "--pretty=format:%H%x09%h%x09%an%x09%ad%x09%s",
+      "--date=short",
+    ];
+    if (ref) {
+      args.push(ref);
+    }
+
+    const { stdout } = await execa("git", args, { cwd: repoDir });
 
     if (!stdout) return [];
 
