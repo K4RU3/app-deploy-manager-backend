@@ -103,6 +103,30 @@ export class DockerService {
       return false;
     }
   }
+
+  async getContainerStatus(containerName: string): Promise<"Running" | "Stopped" | "Error"> {
+    try {
+      const container = docker.getContainer(containerName);
+      const info = await container.inspect();
+      const status = info.State.Status;
+
+      if (status === "running" || status === "restarting") {
+        return "Running";
+      }
+      if (status === "exited" || status === "created") {
+        return "Stopped";
+      }
+      if (status === "dead") {
+        return "Error";
+      }
+      return "Stopped";
+    } catch (err: any) {
+      if (err.statusCode === 404) {
+        return "Stopped";
+      }
+      return "Error";
+    }
+  }
 }
 
 export const dockerService = new DockerService();

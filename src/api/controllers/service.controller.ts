@@ -12,8 +12,15 @@ import { ServiceSchema, type Service } from '../../models/service.js';
 
 export class ServiceController {
   async getAllServices(request: FastifyRequest, reply: FastifyReply) {
-    const services = db.prepare('SELECT * FROM services').all();
-    return reply.send(services.map((s) => ServiceSchema.parse(s)));
+    const rawServices = db.prepare('SELECT * FROM services').all() as any[];
+    const services = await Promise.all(
+      rawServices.map(async (s) => {
+        const service = ServiceSchema.parse(s);
+        service.status = await dockerService.getContainerStatus(service.containerName);
+        return service;
+      })
+    );
+    return reply.send(services);
   }
 
   async createService(request: FastifyRequest<{ Body: { repositoryUrl: string; branch?: string } }>, reply: FastifyReply) {
@@ -93,7 +100,9 @@ export class ServiceController {
       // 8. enable service
       await nginxService.enableService(service.domain);
 
-      return reply.code(201).send(service);
+      const responseService = ServiceSchema.parse(service);
+      responseService.status = await dockerService.getContainerStatus(service.containerName);
+      return reply.code(201).send(responseService);
     } catch (error: any) {
       // Cleanup on failure
       await fs.rm(repoDir, { recursive: true, force: true });
@@ -163,8 +172,10 @@ export class ServiceController {
 
     db.prepare(`UPDATE services SET ${setClause} WHERE id = ?`).run(...values, id);
 
-    const updatedService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
-    return reply.send(ServiceSchema.parse(updatedService));
+    const updatedRawService = db.prepare('SELECT * FROM services WHERE id = ?').get(id);
+    const updatedService = ServiceSchema.parse(updatedRawService);
+    updatedService.status = await dockerService.getContainerStatus(updatedService.containerName);
+    return reply.send(updatedService);
   }
 
   async enableService(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {

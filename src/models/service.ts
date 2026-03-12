@@ -36,6 +36,7 @@ export const ServiceSchema = z.object({
     if (typeof val === 'number') return val === 1;
     return val;
   }, z.boolean()),
+  status: z.enum(['Running', 'Stopped', 'Error']).optional(),
 });
 
 export type Service = z.infer<typeof ServiceSchema>;
