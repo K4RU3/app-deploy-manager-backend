@@ -11,7 +11,7 @@ import { ServiceSchema, type Service } from '../../models/service.js';
 export class BackupController {
   async getBackups(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const { id } = request.params;
-    const history = db.prepare('SELECT * FROM backup_history WHERE serviceId = ? ORDER BY createdAt DESC').all();
+    const history = db.prepare('SELECT * FROM backup_history WHERE serviceId = ? ORDER BY createdAt DESC').all(id);
     return reply.send(history.map((h) => BackupHistorySchema.parse(h)));
   }
 

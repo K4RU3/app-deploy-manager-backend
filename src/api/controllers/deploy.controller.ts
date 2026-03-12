@@ -35,7 +35,7 @@ export class DeployController {
 
   async getDeployHistory(request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) {
     const { id } = request.params;
-    const history = db.prepare('SELECT * FROM deploy_history WHERE serviceId = ? ORDER BY timestamp DESC').all();
+    const history = db.prepare('SELECT * FROM deploy_history WHERE serviceId = ? ORDER BY timestamp DESC').all(id);
     return reply.send(history.map((h) => DeployHistorySchema.parse(h)));
   }
 }
