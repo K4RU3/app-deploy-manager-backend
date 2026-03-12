@@ -46,7 +46,9 @@ export class DeployService {
 
       // 3. Checkout branch or commit
       log(`Checking out ${options.mode}: ${options.value}...`);
-      await gitService.checkout(repoDir, options.value);
+      // Use origin/branch to ensure we get the latest from remote
+      const checkoutRef = options.mode === 'branch' ? `origin/${options.value}` : options.value;
+      await gitService.checkout(repoDir, checkoutRef);
 
       // Get current commit hash for history
       const logs = await gitService.getLogs(repoDir, 1);
