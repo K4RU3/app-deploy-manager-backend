@@ -73,6 +73,18 @@ export class BackupController {
       return reply.code(500).send({ error: error.message });
     }
   }
+
+  async deleteBackup(request: FastifyRequest<{ Params: { id: string; file: string } }>, reply: FastifyReply) {
+    const { id, file } = request.params;
+
+    try {
+      await backupService.deleteBackup(id, file);
+      db.prepare('DELETE FROM backup_history WHERE serviceId = ? AND file = ?').run(id, file);
+      return reply.code(204).send();
+    } catch (error: any) {
+      return reply.code(500).send({ error: error.message });
+    }
+  }
 }
 
 export const backupController = new BackupController();

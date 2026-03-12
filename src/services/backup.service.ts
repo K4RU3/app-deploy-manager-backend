@@ -76,6 +76,19 @@ export class BackupService {
       '/data',
     ]);
   }
+
+  async deleteBackup(serviceId: string, backupFile: string) {
+    const backupDir = path.join(BACKUP_ROOT, serviceId);
+    const filePath = path.join(backupDir, backupFile);
+
+    try {
+      await fs.unlink(filePath);
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        throw err;
+      }
+    }
+  }
 }
 
 export const backupService = new BackupService();

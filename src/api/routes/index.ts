@@ -28,6 +28,7 @@ export default async function (fastify: FastifyInstance) {
   fastify.post('/services/:id/backup', backupController.createBackup);
   fastify.post('/services/:id/restore', backupController.restoreBackup);
   fastify.get('/services/:id/backups/:file', backupController.downloadBackup);
+  fastify.delete('/services/:id/backups/:file', backupController.deleteBackup);
 
   // System
   fastify.get('/system/stats', systemController.getStats);

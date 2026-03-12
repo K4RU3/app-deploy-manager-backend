@@ -533,6 +533,7 @@ GET  /services/:id/backups
 POST /services/:id/backup
 POST /services/:id/restore
 GET  /services/:id/backups/:file
+DELETE /services/:id/backups/:file
 ```
 
 ---
